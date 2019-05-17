@@ -1,3 +1,6 @@
+__author__ = "Adailton Saraiva"
+__email__ = "s.adailton@gmail.com"
+
 from ClassServidor import *
 from ClassSensor import *
 from ClassThread import *
@@ -18,8 +21,6 @@ def controla_lampada(estado: int):
 
 def controla_arcondicionado(conexao, ip_addr):
     pass
-
-
 
 def controla_sensor(conexao, ip_addr):
 
@@ -42,24 +43,48 @@ def controla_sensor(conexao, ip_addr):
 
 def configura_dispositivo(conexao, ip_addr):
 
+    sensores_aux = {}
+
     while True:
+
         msg = conexao.recv(TAM_BUFFER)
+
         if not msg:
             break
         else:
             nome_dispositivo = msg.decode('utf8')
-            print(nome_dispositivo)
+            local_dispositivo = input('Sensor: {}. Informe o cômodo onde este dispositivo está instalado: '.format(nome_dispositivo))
+
+
+            print("Gerando id do dispositivo... ", end="")
             sensorid = randint(1, 999)
-            local_dispositivo = str(input('Informe o cômodo onde o dispositivo está instalado: '))
-            sensores[sensorid] = {'nome': nome_dispositivo}
-            sensores[sensorid] = {'local': local_dispositivo}
-            sensores[sensorid] = {'conexao': conexao}
+            print("id: {}".format(sensorid))
 
-            if nome_dispositivo == 'termometro':
-                sensores[sensorid] = {'temperatura'}
+            sensores_aux[sensorid] = {'nome': '', 'local': local_dispositivo}
 
-            conexao.sendall(bytes(str(sensorid), 'utf8'))
+            if nome_dispositivo == 'lampada':
+                sensores_aux[sensorid].update({'estado': ''})
+
+            elif nome_dispositivo == 'tomada':
+                sensores_aux[sensorid].update({'estado': ''})
+                sensores_aux[sensorid].update({'consumo': ''})
+
+            elif nome_dispositivo == 'presenca':
+                sensores_aux[sensorid].update({'estado': ''})
+
+            elif nome_dispositivo == 'arcondicionado':
+                sensores_aux[sensorid].update({'estado': 1})
+
+            elif nome_dispositivo == 'termometro':
+                sensores_aux[sensorid].update({'temperatura': ''})
+            else:
+                return False
+
+            conexao.sendall(bytes(str(sensores_aux), 'utf8'))
+            sensores_aux[sensorid].update({'conexao': str(conexao)})
+            sensores.update(sensores_aux)
             return True
+
     return False
 
 def main():
@@ -73,20 +98,10 @@ def main():
     while True:
         conexao, ip_addr = server.cria_conexao()
         thread = threading.Thread(target=configura_dispositivo, args=(conexao, ip_addr))
+
         thread.start()
+        thread.join()
 
-        #msg = conexao.recv(TAM_BUFFER)
-
-
-            # msg = msg.decode('utf8')
-
-
-
-            #sensores[idsensor]['thread'] = threading.Thread(target=controla_sensor, args=(conexao, ip_addr))
-
-           # print(sensores)
-
-            #sensores[idsensor]['thread'].start()
 
 
 if __name__ == '__main__':

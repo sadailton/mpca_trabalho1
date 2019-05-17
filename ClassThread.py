@@ -3,12 +3,10 @@ import threading
 
 class MinhaThread (threading.Thread):
 
-    def __init__(self, threadID: int, nome: str):
+    def __init__(self, nome: str, target, args):
 
-        super().__init__()
-        self.threadID = threadID
-        self.name = nome
+        super().__init__(target=target, args=args, name=nome)
 
-    def run(self):
-        print("Iniciando thread {}".format(self.nome))
+
+
 

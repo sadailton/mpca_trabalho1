@@ -6,13 +6,13 @@ class SensorGenerico:
 
     server: str = ''
     server_port: int = 9876
-    idsensor: int = ''
+    sensorid: int = ''
     localizacao: str = ''
     nome: str = ''
 
     def __init__(self, id_sensor: int, localizacao: str, nome: str):
 
-        self.idsensor = id_sensor
+        self.sensorid = id_sensor
         self.nome = nome
         self.localizacao = localizacao
 
@@ -29,6 +29,36 @@ class SensorGenerico:
 
         conexao.close()
 
+    def set_sensorid(self, sensorid):
+        self.sensorid = sensorid
+
+    def get_sensorid(self):
+        return self.sensorid
+
+    def get_nome(self):
+        return self.nome
+
+    def set_localizacao(self, localizacao):
+        self.localizacao = localizacao
+
+    def get_localizacao(self):
+        return self.localizacao
+
+
+class Presenca(SensorGenerico):
+
+    estado: int = 0
+
+    def __init__(self, id_sensor, estado, localizacao):
+        super().__init__(id_sensor, localizacao, 'presenca')
+        self.estado = estado
+
+    def get_estado(self):
+        return self.estado
+
+    def set_presenca(self, tem_presenca):
+        self.estado = tem_presenca
+
 
 class Termometro(SensorGenerico):
 
@@ -40,7 +70,7 @@ class Termometro(SensorGenerico):
         self.temperatura = temperatura
 
     def get_temperatura(self):
-        return temperatura
+        return self.temperatura
 
     def set_temperatura(self, temperatura) -> NONE:
         self.temperatura = temperatura
@@ -50,24 +80,23 @@ class Lampada(SensorGenerico):
 
     estado: int = 0
 
-    def __init__(self, server, server_port, id_sensor, estado: int):
-        super().__init__(server, server_port, id_sensor)
+    def __init__(self, id_sensor, estado: int, localizacao):
+        super().__init__(id_sensor, estado, 'lampada')
         self.estado = estado
 
     def get_estado(self):
         return self.estado
 
-    def liga(self):
+    def ligar(self):
         self.estado = 1
 
-    def desliga(self):
+    def desligar(self):
         self.estado = 0
 
 
 class ArCondicionado(SensorGenerico):
 
-    temperatura: float = 0.0
-    estado = 0
+    estado: int = 0
 
     def __init__(self, id_sensor: int, temperatura: float, estado: int, localizacao: str):
         super().__init__(id_sensor, localizacao, 'arcondicionado')
@@ -75,17 +104,15 @@ class ArCondicionado(SensorGenerico):
         self.estado = estado
         self.localizacao = localizacao
 
-    def liga(self):
+    def ligar(self):
         self.estado = 1
 
-    def desliga(self):
+    def desligar(self):
         self.estado = 0
 
-    def get_temperatura(self) -> float:
-        return self.temperatura
+    def get_estado(self):
+        return self.estado
 
-    def set_temperatura(self, temperatura):
-        self.temperatura = temperatura
 
 
 
