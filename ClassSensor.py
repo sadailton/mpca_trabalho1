@@ -72,7 +72,7 @@ class Termometro(SensorGenerico):
     def get_temperatura(self):
         return self.temperatura
 
-    def set_temperatura(self, temperatura) -> NONE:
+    def set_temperatura(self, temperatura: float) -> NONE:
         self.temperatura = temperatura
 
 

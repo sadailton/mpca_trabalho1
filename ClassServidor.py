@@ -22,4 +22,5 @@ class Servidor:
         return self.TCP_SOCKET.accept()
 
     def fecha_conexao(self):
+
         self.TCP_SOCKET.close()
