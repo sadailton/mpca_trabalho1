@@ -21,9 +21,14 @@ class SensorGenerico:
         self.SERVER = ip_servidor
         self.SERVER_PORT = porta_servidor
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        tcp.connect((ip_servidor, porta_servidor))
 
-        return tcp
+        try:
+            print('Conectando-se ao servidor {}:{}'.format(ip_servidor, porta_servidor))
+            tcp.connect((ip_servidor, porta_servidor))
+            print('Conexão estabelecida com sucesso')
+            return tcp
+        except (ConnectionRefusedError, ConnectionError):
+            return False
 
     def fecha_conexao(self, conexao: object):
 
@@ -112,6 +117,19 @@ class ArCondicionado(SensorGenerico):
 
     def get_estado(self):
         return self.estado
+
+class Tomada(SensorGenerico):
+    consumo: float = 0
+
+    def __init__(self, id_sensor: int, localizacao: str):
+        super().__init__(id_sensor, localizacao, 'tomada')
+
+    def set_consumo(self, consumo):
+        self.consumo = consumo
+
+    def get_consumo(self):
+        return self.consumo
+
 
 
 
