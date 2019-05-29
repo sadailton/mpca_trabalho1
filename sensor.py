@@ -5,11 +5,12 @@ from ClassSensor import *
 from random import randint, random
 from ast import literal_eval
 import time
+from datetime import datetime
 
 def leFloat(msg):
     while True:
         try:
-            numero = float((input(msg)).replace(',','.'))
+            numero = float((input(msg)).replace(',', '.'))
             break
         except(ValueError):
             print("Você deve digitar um número real")
@@ -54,16 +55,10 @@ def menu():
 
 def main():
 
-    server_ip = '127.0.0.10'
-    server_port = 9876
+    server_ip: str = '127.0.0.10'
+    server_port: int = 9876
 
-    TEMPO_DE_ESPERA: int = 3
     INTERVALO_SEG_MONITORAMENTO_TOMADA = 120
-
-    '''
-    server_ip = input('Informe o IP da central de controle: ')
-    server_port = input('Informe a porta TCP de conexão: ')
-    '''
 
     tipo_sensor = menu()
     idsensor = randint(1, 9999)
@@ -93,16 +88,16 @@ def main():
             cabecalho_sensor['sensorid'] = sensor_lampada.get_sensorid()
 
             while True:
-                msg_from_server = recebe_msg(sensor_lampada_soquete)
+                msg_from_server = literal_eval(recebe_msg(sensor_lampada_soquete))
 
-                if msg_from_server == 'ligar':
-                    print('Ligando lampada... ', end='')
-                    time.sleep(TEMPO_DE_ESPERA)
+                datahora = datetime.fromtimestamp(msg_from_server['timestamp'])
+
+                if msg_from_server['comando'] == 1:
+                    print('(id: {}, ts: {}) Ligando lampada... '.format(msg_from_server['sensorid'], datahora), end='')
                     sensor_lampada.ligar()
                     print('OK', end='\n')
-                elif msg_from_server == 'desligar':
-                    print('Desligando lampada... ', end='')
-                    time.sleep(TEMPO_DE_ESPERA)
+                elif msg_from_server['comando'] == 0:
+                    print('(id: {}, ts: {})Desligando lampada... '.format(msg_from_server['sensorid'], datahora), end='')
                     sensor_lampada.desligar()
                     print('OK', end='\n')
                 else:
@@ -168,14 +163,16 @@ def main():
                 if msg_to_server == 'sair':
                     sensor_presenca_soquete.close()
 
-                elif msg_to_server == 's':
+                elif msg_to_server == 's' or msg_to_server == 'S':
                     sensor_presenca.set_presenca(1)
                     cabecalho_sensor.update({'estado': sensor_presenca.get_estado()})
+                    cabecalho_sensor.update({'timestamp': datetime.now().timestamp()})
                     envia_msg(sensor_presenca_soquete, cabecalho_sensor)
 
-                elif msg_to_server == 'n':
+                elif msg_to_server == 'n' or msg_to_server == 'N':
                     sensor_presenca.set_presenca(0)
                     cabecalho_sensor.update({'estado': sensor_presenca.get_estado()})
+                    cabecalho_sensor.update({'timestamp': datetime.now().timestamp()})
                     envia_msg(sensor_presenca_soquete, cabecalho_sensor)
                 else:
                     print('Resposta inválida')
@@ -206,16 +203,15 @@ def main():
 
             while True:
 
-                msg_from_server = recebe_msg(sensor_arcondicionado_soquete)
+                msg_from_server = literal_eval(recebe_msg(sensor_arcondicionado_soquete))
+                datahora = datetime.fromtimestamp(msg_from_server['timestamp'])
 
-                if msg_from_server == 'ligar':
-                    print("Ligando ar condicionado... ", end="")
-                    time.sleep(TEMPO_DE_ESPERA)
+                if msg_from_server['comando'] == 1:
+                    print("(id: {}, ts: {}) Ligando ar condicionado... ".format(msg_from_server['sensorid'], datahora), end="")
                     sensor_arcondicionado.ligar()
                     print("OK", end="\n")
-                elif msg_from_server == 'desligar':
-                    print("Desligando ar condicionado... ", end="")
-                    time.sleep(TEMPO_DE_ESPERA)
+                elif msg_from_server['comando'] == 0:
+                    print("(id: {}, ts: {}) Desligando ar condicionado... ".format(msg_from_server['sensorid'], datahora), end="")
                     sensor_arcondicionado.desligar()
                     print("OK", end="\n")
                 else:
@@ -245,8 +241,8 @@ def main():
             sensor_temperatura.set_localizacao(msg_from_server[sensorid]['local'])
 
             while True:
-                msg = input('Temperatura do ambiente em ºC: ')
-                if msg == '000':
+                msg = leFloat('Temperatura do ambiente em ºC: ')
+                if msg == '99':
                     print('Encerrando conexão com a central...')
                     sensor_temperatura.fecha_conexao(sensor_temperatura_soquete)
                     print('Conexão encerrada:')
@@ -256,6 +252,7 @@ def main():
 
                     cabecalho_sensor['sensorid'] = sensor_temperatura.get_sensorid()
                     cabecalho_sensor.update({'temperatura': sensor_temperatura.get_temperatura()})
+                    cabecalho_sensor.update({'timestamp': datetime.now().timestamp()})
 
                     envia_msg(sensor_temperatura_soquete, cabecalho_sensor)
         else:

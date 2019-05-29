@@ -2,11 +2,11 @@ __author__ = "Adailton Saraiva"
 __email__ = "s.adailton@gmail.com"
 
 from ClassServidor import *
-from ClassThread import *
+import threading
 from ast import literal_eval
 from random import randint
 import time
-import datetime
+from datetime import datetime
 
 TAM_BUFFER: int = 1024
 
@@ -31,9 +31,6 @@ def agenda_arcondicionado(hora_ligar, hora_desligar):
     s = int(s) + intervalo - 1
     hora_desligar_max = h+':'+m+':'+str(s)
 
-    print(hora_ligar_max)
-    print(hora_desligar_max)
-
     while True:
         time.sleep(intervalo)
         if hora_ligar <= time.strftime('%H:%M:%S') < hora_ligar_max:
@@ -48,7 +45,7 @@ def grava_arquivo(nomeArquivo, conteudo):
         arquivo.writelines("%s\n" % linha for linha in conteudo)
 
 
-def le_arquivo(nomeArquivo):
+def le_arquivo(nomeArquivo) -> list:
 
     conteudo = []
 
@@ -64,6 +61,7 @@ def le_arquivo(nomeArquivo):
 def controla_tomada(consumo, local):
 
     nomeArquivo = 'relatorio_tomadas.txt'
+    cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'consumo': '', 'local': ''}
     log_tomada = []
 
     for i in sensores:
@@ -75,7 +73,11 @@ def controla_tomada(consumo, local):
                     except(FileNotFoundError):
                         print("Arquivo não encontrado")
                 else:
-                    log_tomada.append({'sensorid': i, 'consumo': consumo, 'local': local})
+                    cabecalho_sensor['sensorid'] = i
+                    cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                    cabecalho_sensor['consumo'] = consumo
+                    cabecalho_sensor['local'] = local
+                    log_tomada.append(cabecalho_sensor)
                     try:
                         grava_arquivo(nomeArquivo, log_tomada)
                     except(EOFError, IOError):
@@ -84,17 +86,25 @@ def controla_tomada(consumo, local):
 
 def controla_lampada(tem_presenca, local):
 
+    cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'comando': ''}
+
     for i in sensores:
         if sensores[i]['nome'] == 'lampada':
             if sensores[i]['local'] == local:
                 try:
                     if tem_presenca == 1:
                         print("Ligando lampadas do ambiente: {}".format(local))
-                        sensores[i]['conexao'].sendall(bytes('ligar', 'utf8'))
+                        cabecalho_sensor['sensorid'] = i
+                        cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                        cabecalho_sensor['comando'] = 1
+                        sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
                     elif tem_presenca == 0:
                         print("Desligando lampadas do ambiente: {}".format(local))
-                        sensores[i]['conexao'].sendall(bytes('desligar', 'utf8'))
+                        cabecalho_sensor['sensorid'] = i
+                        cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                        cabecalho_sensor['comando'] = 0
+                        sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
                 except (ConnectionError, ConnectionResetError):
                     print("Erro ao se conectar a lampada instalada em {}.".format(local))
@@ -102,24 +112,38 @@ def controla_lampada(tem_presenca, local):
 
 def controla_arcondicionado(temperatura, local, ligar=0):
 
+    cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'comando': ''}
+
     for i in sensores:
         if sensores[i]['nome'] == 'arcondicionado':
             if ligar == 1 and local == 'todos':
                 print("Ligando o ar condicionado. Local: {}".format(sensores[i]['local']))
-                sensores[i]['conexao'].sendall(bytes('ligar', 'utf8'))
+                cabecalho_sensor['sensorid'] = i
+                cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                cabecalho_sensor['comando'] = 1
+                sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
             elif ligar == 0 and local == 'todos':
                 print("Desligando o ar condicionado. Local: {}".format(sensores[i]['local']))
-                sensores[i]['conexao'].sendall(bytes('desligar', 'utf8'))
+                cabecalho_sensor['sensorid'] = i
+                cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                cabecalho_sensor['comando'] = 0
+                sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
             elif sensores[i]['local'] == local:
                 try:
                     if temperatura > 28:
                         print("Ligando o ar condicionado. Local: {}".format(local))
-                        sensores[i]['conexao'].sendall(bytes('ligar', 'utf8'))
+                        cabecalho_sensor['sensorid'] = i
+                        cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                        cabecalho_sensor['comando'] = 1
+                        sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
                     elif temperatura < 22:
                         print("Desligando o ar condicionado. Local: {}".format(local))
-                        sensores[i]['conexao'].sendall(bytes('desligar', 'utf8'))
+                        cabecalho_sensor['sensorid'] = i
+                        cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                        cabecalho_sensor['comando'] = 0
+                        sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
                 except (ConnectionError, ConnectionResetError):
                     print("Erro ao se conectar ao ar condicionado instalado em {}.".format(local))
@@ -129,6 +153,7 @@ def gerencia_sensor(conexao, ip_addr):
 
     while True:
         print("Conectador por: {}".format(ip_addr))
+
         try:
             msg_from_client = conexao.recv(TAM_BUFFER)
             if not msg_from_client:
@@ -148,7 +173,7 @@ def gerencia_sensor(conexao, ip_addr):
         elif sensores[sensorid]['nome'] == 'presenca':
             tem_presenca = int(msg_from_client['estado'])
             if tem_presenca == 0:
-                time.sleep(TEMPORIZADOR_SENSOR_PRESENCA)
+                time.sleep(1)
 
             local = str(sensores[sensorid]['local'])
             controla_lampada(tem_presenca, local)
@@ -159,7 +184,7 @@ def gerencia_sensor(conexao, ip_addr):
             controla_tomada(consumo, local)
 
 
-def configura_dispositivo(conexao, ip_addr):
+def configura_dispositivo(conexao, ip_addr) -> bool:
 
     sensores_aux = {}
 
@@ -177,23 +202,28 @@ def configura_dispositivo(conexao, ip_addr):
             sensorid = randint(1, 999)
             print("id: {}".format(sensorid))
 
-            sensores_aux[sensorid] = {'nome': nome_dispositivo, 'local': local_dispositivo}
+            sensores_aux[sensorid] = {'nome': nome_dispositivo, 'local': local_dispositivo, 'timestamp': ''}
 
             if nome_dispositivo == 'lampada':
                 sensores_aux[sensorid].update({'estado': ''})
+                sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'tomada':
                 sensores_aux[sensorid].update({'estado': ''})
                 sensores_aux[sensorid].update({'consumo': ''})
+                sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'presenca':
                 sensores_aux[sensorid].update({'estado': ''})
+                sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'arcondicionado':
                 sensores_aux[sensorid].update({'estado': 1})
+                sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'termometro':
                 sensores_aux[sensorid].update({'temperatura': ''})
+                sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
             else:
                 return False
 
@@ -209,31 +239,24 @@ def main():
 
     HOST_IP: str = '127.0.0.10'
     HOST_PORT: int = 9876
-    NUM_CONN = 10
+    NUM_CONN = 30
 
     server = Servidor(HOST_IP, HOST_PORT, NUM_CONN)
-    threads = []
-    threads2 = []
 
-    thread = threading.Thread(target=agenda_arcondicionado, args=(HORA_LIGAR_ARCONDICIONADO, HORA_DESLIGAR_ARCONDICIONADO))
-    thread.daemon = True
-    thread.start()
+    thread_agenda_arcondicionado = threading.Thread(target=agenda_arcondicionado, args=(HORA_LIGAR_ARCONDICIONADO, HORA_DESLIGAR_ARCONDICIONADO))
+    thread_agenda_arcondicionado.daemon = True
+    thread_agenda_arcondicionado.start()
 
     while True:
+        print("Aguardando conexão... ")
         conexao, ip_addr = server.cria_conexao()
-        newthread = threading.Thread(target=configura_dispositivo, args=(conexao, ip_addr))
+        thread_configura_dispositivo = threading.Thread(target=configura_dispositivo, args=(conexao, ip_addr))
 
-        newthread.start()
-        threads.append(newthread)
+        thread_configura_dispositivo.start()
+        thread_configura_dispositivo.join()
 
-        for t in threads:
-            t.join()
-
-        newthread2 = threading.Thread(target=gerencia_sensor, args=(conexao, ip_addr))
-        newthread2.start()
-
-        for t in threads2:
-            t.join()
+        thread_gerencia_sensor = threading.Thread(target=gerencia_sensor, args=(conexao, ip_addr))
+        thread_gerencia_sensor.start()
 
 
 if __name__ == '__main__':
