@@ -7,14 +7,15 @@ from ast import literal_eval
 from random import randint
 import time
 from datetime import datetime
+from validador_dados import *
 
 TAM_BUFFER: int = 1024
 
 # tempo em segundos
 TEMPORIZADOR_SENSOR_PRESENCA = 6000
 
-HORA_LIGAR_ARCONDICIONADO = '20:06:00'
-HORA_DESLIGAR_ARCONDICIONADO = '20:10:00'
+HORA_LIGAR_ARCONDICIONADO = '00:42:00'
+HORA_DESLIGAR_ARCONDICIONADO = '00:43:00'
 
 sensores = {}
 
@@ -39,26 +40,7 @@ def agenda_arcondicionado(hora_ligar, hora_desligar):
             controla_arcondicionado(22, 'todos', 0)
 
 
-def grava_arquivo(nomeArquivo, conteudo):
-
-    with open(nomeArquivo, 'a+') as arquivo:
-        arquivo.writelines("%s\n" % linha for linha in conteudo)
-
-
-def le_arquivo(nomeArquivo) -> list:
-
-    conteudo = []
-
-    with open(nomeArquivo, 'r') as arquivo:
-        conteudoarquivo = arquivo.readlines()
-
-        for linha in conteudoarquivo:
-            aux = linha[:-1]
-            conteudo.append(aux)
-    return conteudo
-
-
-def controla_tomada(consumo, local):
+def controla_tomada(consumo, local, timestamp):
 
     nomeArquivo = 'relatorio_tomadas.txt'
     cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'consumo': '', 'local': ''}
@@ -74,7 +56,7 @@ def controla_tomada(consumo, local):
                         print("Arquivo não encontrado")
                 else:
                     cabecalho_sensor['sensorid'] = i
-                    cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                    cabecalho_sensor['timestamp'] = timestamp
                     cabecalho_sensor['consumo'] = consumo
                     cabecalho_sensor['local'] = local
                     log_tomada.append(cabecalho_sensor)
@@ -112,7 +94,7 @@ def controla_lampada(tem_presenca, local):
 
 def controla_arcondicionado(temperatura, local, ligar=0):
 
-    cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'comando': ''}
+    cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'comando': '', 'temperatura': ''}
 
     for i in sensores:
         if sensores[i]['nome'] == 'arcondicionado':
@@ -121,6 +103,7 @@ def controla_arcondicionado(temperatura, local, ligar=0):
                 cabecalho_sensor['sensorid'] = i
                 cabecalho_sensor['timestamp'] = datetime.now().timestamp()
                 cabecalho_sensor['comando'] = 1
+                cabecalho_sensor['temperatura'] = 22
                 sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
             elif ligar == 0 and local == 'todos':
                 print("Desligando o ar condicionado. Local: {}".format(sensores[i]['local']))
@@ -181,7 +164,8 @@ def gerencia_sensor(conexao, ip_addr):
         elif sensores[sensorid]['nome'] == 'tomada':
             consumo = float(msg_from_client['consumo'])
             local = str(sensores[sensorid]['local'])
-            controla_tomada(consumo, local)
+            timestamp = float(msg_from_client['timestamp'])
+            controla_tomada(consumo, local, timestamp)
 
 
 def configura_dispositivo(conexao, ip_addr) -> bool:
@@ -237,11 +221,31 @@ def configura_dispositivo(conexao, ip_addr) -> bool:
 
 def main():
 
-    HOST_IP: str = '127.0.0.10'
-    HOST_PORT: int = 9876
+    print("BEM VINDO AO 'CASA CONECTADA'\n")
+
+    print('Definindo as configurações de rede...')
+
     NUM_CONN = 30
 
-    server = Servidor(HOST_IP, HOST_PORT, NUM_CONN)
+    try:
+        HOST_IP, HOST_PORT = le_arquivo('conf.txt')
+        HOST_PORT = int(HOST_PORT)
+    except:
+        HOST_IP = le_endereco_ip('IP: ')
+        HOST_PORT: int = le_porta('Porta: ')
+
+    try:
+        server = Servidor(HOST_IP, HOST_PORT, NUM_CONN)
+    except:
+        print(HOST_IP, HOST_PORT)
+        print('Não foi possível iniciar o servidor')
+        print('Verifique as configurações de rede')
+        exit(10)
+
+    try:
+        grava_arquivo('conf.txt', (HOST_IP, HOST_PORT), 'w')
+    except:
+        print('Não foi possível salvar as configurações de rede do servidor')
 
     thread_agenda_arcondicionado = threading.Thread(target=agenda_arcondicionado, args=(HORA_LIGAR_ARCONDICIONADO, HORA_DESLIGAR_ARCONDICIONADO))
     thread_agenda_arcondicionado.daemon = True

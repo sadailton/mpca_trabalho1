@@ -1,6 +1,7 @@
 import sched, time
 from random import randint, random, randrange
 import datetime
+import re
 
 sensores = {}
 
@@ -15,13 +16,6 @@ def funcao():
     #s.enter(5, 1, funcao)
 
 
-datahora = datetime.datetime.now().second
-
-hora = '19:30:21'
-
-h, m, s = hora.split(':')
-
-print(h,m,int(s)+30)
 
 #hora = datetime.timedelta()
 
@@ -29,10 +23,19 @@ print(h,m,int(s)+30)
 
 #print(datetime.timedelta(seconds=10).seconds)
 
+def valida_ip(endereco_ip: str):
+    m = re.match('(([2][5][0-5]\.)|([2][0-4][0-9]\.)|([0-1]?[0-9]?[0-9]\.)){3}(([2][5][0-5])|([2][0-4][0-9])|([0-1]?[0-9]?[0-9]))', endereco_ip)
+
+    if m:
+        return True
+    else:
+        return False
 
 
+while True:
+    endip = input('IP: ')
 
-
+    print(valida_ip(endip))
 
 '''
 while True:
