@@ -97,7 +97,7 @@ def main():
                     sensor_lampada.ligar()
                     print('OK', end='\n')
                 elif msg_from_server['comando'] == 0:
-                    print('(id: {}, ts: {})Desligando lampada... '.format(msg_from_server['sensorid'], datahora), end='')
+                    print('(id: {}, ts: {}) Desligando lampada... '.format(msg_from_server['sensorid'], datahora), end='')
                     sensor_lampada.desligar()
                     print('OK', end='\n')
                 else:

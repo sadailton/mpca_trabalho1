@@ -11,7 +11,7 @@ from datetime import datetime
 TAM_BUFFER: int = 1024
 
 # tempo em segundos
-TEMPORIZADOR_SENSOR_PRESENCA = 6000
+TEMPORIZADOR_SENSOR_PRESENCA = 5
 
 HORA_LIGAR_ARCONDICIONADO = '20:06:00'
 HORA_DESLIGAR_ARCONDICIONADO = '20:10:00'
@@ -84,7 +84,7 @@ def controla_tomada(consumo, local):
                         print("Erro ao salvar os dados no arquivo '{}'".format(nomeArquivo))
 
 
-def controla_lampada(tem_presenca, local):
+def controla_lampada(tem_presenca: int, local: str):
 
     cabecalho_sensor = {'sensorid': '', 'timestamp': '', 'comando': ''}
 
@@ -116,33 +116,37 @@ def controla_arcondicionado(temperatura, local, ligar=0):
 
     for i in sensores:
         if sensores[i]['nome'] == 'arcondicionado':
-            if ligar == 1 and local == 'todos':
+            if ligar == 1 and local == 'todos' and sensores[i]['estado'] == 0:
                 print("Ligando o ar condicionado. Local: {}".format(sensores[i]['local']))
                 cabecalho_sensor['sensorid'] = i
                 cabecalho_sensor['timestamp'] = datetime.now().timestamp()
                 cabecalho_sensor['comando'] = 1
+                sensores[i]['estado'] = 1
                 sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
-            elif ligar == 0 and local == 'todos':
+            elif ligar == 0 and local == 'todos' and sensores[i]['estado'] == 1:
                 print("Desligando o ar condicionado. Local: {}".format(sensores[i]['local']))
                 cabecalho_sensor['sensorid'] = i
                 cabecalho_sensor['timestamp'] = datetime.now().timestamp()
                 cabecalho_sensor['comando'] = 0
+                sensores[i]['estado'] = 0
                 sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
             elif sensores[i]['local'] == local:
                 try:
-                    if temperatura > 28:
+                    if temperatura > 28 and sensores[i]['estado'] == 0:
                         print("Ligando o ar condicionado. Local: {}".format(local))
                         cabecalho_sensor['sensorid'] = i
                         cabecalho_sensor['timestamp'] = datetime.now().timestamp()
                         cabecalho_sensor['comando'] = 1
+                        sensores[i]['estado'] = 1
                         sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
-                    elif temperatura < 22:
+                    elif temperatura < 22 and sensores[i]['estado'] == 1:
                         print("Desligando o ar condicionado. Local: {}".format(local))
                         cabecalho_sensor['sensorid'] = i
                         cabecalho_sensor['timestamp'] = datetime.now().timestamp()
                         cabecalho_sensor['comando'] = 0
+                        sensores[i]['estado'] = 0
                         sensores[i]['conexao'].sendall(bytes(str(cabecalho_sensor), 'utf8'))
 
                 except (ConnectionError, ConnectionResetError):
@@ -172,11 +176,14 @@ def gerencia_sensor(conexao, ip_addr):
 
         elif sensores[sensorid]['nome'] == 'presenca':
             tem_presenca = int(msg_from_client['estado'])
-            if tem_presenca == 0:
-                time.sleep(1)
 
             local = str(sensores[sensorid]['local'])
-            controla_lampada(tem_presenca, local)
+            if tem_presenca:
+                controla_lampada(tem_presenca, local)
+                time.sleep(TEMPORIZADOR_SENSOR_PRESENCA)
+                controla_lampada(0, local)
+            else:
+                controla_lampada(0, local)
 
         elif sensores[sensorid]['nome'] == 'tomada':
             consumo = float(msg_from_client['consumo'])
@@ -218,7 +225,7 @@ def configura_dispositivo(conexao, ip_addr) -> bool:
                 sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'arcondicionado':
-                sensores_aux[sensorid].update({'estado': 1})
+                sensores_aux[sensorid].update({'estado': 0})
                 sensores_aux[sensorid]['timestamp'] = datetime.now().timestamp()
 
             elif nome_dispositivo == 'termometro':
