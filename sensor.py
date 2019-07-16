@@ -6,30 +6,13 @@ from random import randint, random
 from ast import literal_eval
 import time
 from datetime import datetime
+from validador_dados import *
 
-def leFloat(msg):
-    while True:
-        try:
-            numero = float((input(msg)).replace(',', '.'))
-            break
-        except(ValueError):
-            print("Você deve digitar um número real")
-
-    return numero
-
-def leInt(msg):
-    while True:
-        try:
-            numero = int(input(msg))
-            break
-        except(ValueError):
-            print("Você deve digitar um número inteiro")
-
-    return numero
 
 def envia_msg(sensor_socket: socket, msg: str):
 
     sensor_socket.sendall(bytes(str(msg), 'utf8'))
+
 
 def recebe_msg(sensor_socket: socket) -> str:
 
@@ -55,10 +38,15 @@ def menu():
 
 def main():
 
-    server_ip: str = '127.0.0.10'
-    server_port: int = 9876
+    try:
+        server_ip, server_port = le_arquivo('conf.txt')
+        server_port = int(server_port)
+    except:
+        server_ip = le_endereco_ip('IP do servidor: ')
+        server_port = le_porta('Porta do servidor: ')
 
-    INTERVALO_SEG_MONITORAMENTO_TOMADA = 120
+    # em segundos
+    INTERVALO_MONITORAMENTO_TOMADA = 10
 
     tipo_sensor = menu()
     idsensor = randint(1, 9999)
@@ -124,15 +112,17 @@ def main():
             cabecalho_sensor['sensorid'] = sensor_tomada.get_sensorid()
 
             while True:
-                msg_to_server = random()*10
-                print(msg_to_server)
+                consumo_kwh = round(random()*10, 4)
+
                 #msg_to_server = leFloat("Informe o consumo desta tomada (Kwh): ")
 
-                sensor_tomada.set_consumo(msg_to_server)
-                cabecalho_sensor['consumo'] = msg_to_server
-
+                sensor_tomada.set_consumo(consumo_kwh)
+                cabecalho_sensor['consumo'] = consumo_kwh
+                cabecalho_sensor['timestamp'] = datetime.now().timestamp()
+                datahora = datetime.fromtimestamp(cabecalho_sensor['timestamp'])
+                print('(id: {}, ts: {}) consumo: {} kwh'.format(cabecalho_sensor['sensorid'], datahora, cabecalho_sensor['consumo']))
                 envia_msg(sensor_tomada_soquete, cabecalho_sensor)
-                time.sleep(INTERVALO_SEG_MONITORAMENTO_TOMADA)
+                time.sleep(INTERVALO_MONITORAMENTO_TOMADA)
 
     # Presenca
     elif tipo_sensor == 3:
@@ -205,9 +195,13 @@ def main():
 
                 msg_from_server = literal_eval(recebe_msg(sensor_arcondicionado_soquete))
                 datahora = datetime.fromtimestamp(msg_from_server['timestamp'])
+                try:
+                    temperatura = msg_from_server['temperatura']
+                except:
+                    temperatura = 24
 
                 if msg_from_server['comando'] == 1:
-                    print("(id: {}, ts: {}) Ligando ar condicionado... ".format(msg_from_server['sensorid'], datahora), end="")
+                    print("(id: {}, ts: {}) Ligando ar condicionado com {}º... ".format(msg_from_server['sensorid'], datahora, temperatura), end="")
                     sensor_arcondicionado.ligar()
                     print("OK", end="\n")
                 elif msg_from_server['comando'] == 0:
