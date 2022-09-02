@@ -19,7 +19,6 @@ HORA_DESLIGAR_ARCONDICIONADO = '22:26:00'
 
 sensores = {}
 
-
 def agenda_arcondicionado(hora_ligar, hora_desligar):
 
     intervalo: int = 30
